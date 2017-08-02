@@ -1,6 +1,4 @@
-/**
- * Created by Сайида on 01.08.2017.
- */
+
 public class Hole extends Point {
     private static int indexHole = 0;
     private boolean state = true;

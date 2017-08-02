@@ -1,6 +1,4 @@
-/**
- * Created by Сайида on 01.08.2017.
- */
+
 public class Ball extends Point {
     private static int indexBall = 0;
     private boolean state;

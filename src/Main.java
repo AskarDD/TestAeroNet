@@ -1,14 +1,8 @@
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.regex.Pattern;
 
-/**
- * Created by Сайида on 01.08.2017.
- */
 public class Main {
-    private static File file = new File("startconfig.txt");
+    private static File file = new File("startconfig_6.txt");
     private static Cell[][] cells;
     private static Ball[] balls;
     private static Hole[] holes;
@@ -17,13 +11,6 @@ public class Main {
     public static void main(String[] args) throws IOException {
         if (file.exists()){
             if (init()){
-
-                byte b = 5;
-                boolean t1 = ((b & 1) == 0);
-                boolean t2 = ((b & 2) == 0);
-                boolean t3 = ((b & 4) == 0);
-                boolean t4 = ((b & 8) == 0);
-
                 int countFinish = 0;
                 int length = balls.length;
                 while (countFinish != length) {
@@ -157,11 +144,19 @@ public class Main {
         for (int i = 0; i < balls.length; i++){
             vBalls[i] = balls[i].clone();
         }
-        while ((x != x2 || y != y2) && !lockFull){
+        int maxRandStep = Math.max(cells.length / 3, 3);
+        int countRandStep = 0;
+        boolean rand = false;
+        while ((x != x2 || y != y2)){
             switch (cycle){
                 case 1 : {
                     while (!lockX) {
                         dir = x2 - x;
+                        if (rand) {
+                            if (dir == 0)
+                                dir = 1 - 2 * (countRandStep % 2);
+                            dir = -dir;
+                        }
                         lockX = !vBalls[indexBall-1].nextX(dir);
                         if (!lockX){
                             lockY = false;
@@ -184,7 +179,7 @@ public class Main {
                             }
                         }
                         x = vBalls[indexBall-1].getX();
-                        if (!lockY && startCycle == 2)
+                        if ((!lockY && startCycle == 2) || rand)
                             break;
                     }
                     cycle = 2;
@@ -192,6 +187,11 @@ public class Main {
                 case 2 : {
                     while (!lockY){
                         dir = y2 - y;
+                        if (rand) {
+                            if (dir == 0)
+                                dir = 1 - 2 * (countRandStep % 2);
+                            dir = -dir;
+                        }
                         lockY = !vBalls[indexBall-1].nextY(dir);
                         if (!lockY){
                             lockX = false;
@@ -212,14 +212,24 @@ public class Main {
                             }
                         }
                         y = vBalls[indexBall-1].getY();
-                        if (!lockX && startCycle == 1)
+                        if ((!lockX && startCycle == 1) || rand)
                             break;
                     }
                     cycle = 1;
                 }break;
             }
             lockFull = lockX && lockY;
-            if (lockFull)
+            rand = false;
+            if (lockFull){
+                lockX = lockY = false;
+                countRandStep++;
+                rand = true;
+                if (y == y2)
+                    cycle = 2;
+                if (x == x2)
+                    cycle = 1;
+            }
+            if (countRandStep > maxRandStep)
                 return null;
         }
         return vBalls;

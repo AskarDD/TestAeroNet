@@ -1,6 +1,4 @@
-/**
- * Created by Сайида on 01.08.2017.
- */
+
 public class Cell extends Point {
     public static byte TOP = 1;
     public static byte BOTTOM = 2;

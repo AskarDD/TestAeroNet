@@ -1,6 +1,4 @@
-/**
- * Created by Сайида on 01.08.2017.
- */
+
 public class Point {
     private int x;
     private int y;
