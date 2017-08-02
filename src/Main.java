@@ -146,7 +146,7 @@ public class Main {
         return valid;
     }
 
-    private static Ball[] goTrack(int x1, int y1, int x2, int y2, int indexBall, int startCycle, boolean leapfrog){
+    private static Ball[] goTrack(int x1, int y1, int x2, int y2, int indexBall, int startCycle){
         int dir = 0;
         int x = x1, y = y1;
         boolean lockX = false;
@@ -160,12 +160,10 @@ public class Main {
         while ((x != x2 || y != y2) && !lockFull){
             switch (cycle){
                 case 1 : {
-                    while (x != x2 && !lockX) {
+                    while (!lockX) {
                         dir = x2 - x;
                         lockX = !vBalls[indexBall-1].nextX(dir);
                         if (!lockX){
-                            if (leapfrog)
-                                lockX = true;
                             lockY = false;
                             for (int i = 0; i < vBalls.length; i++) {
                                 if (i != indexBall - 1) {
@@ -186,16 +184,16 @@ public class Main {
                             }
                         }
                         x = vBalls[indexBall-1].getX();
+                        if (!lockY && startCycle == 2)
+                            break;
                     }
                     cycle = 2;
                 }break;
                 case 2 : {
-                    while (y != y2 && !lockY){
+                    while (!lockY){
                         dir = y2 - y;
                         lockY = !vBalls[indexBall-1].nextY(dir);
                         if (!lockY){
-                            if (leapfrog)
-                                lockY = true;
                             lockX = false;
                             for (int i = 0; i < vBalls.length; i++) {
                                 if (i != indexBall - 1) {
@@ -214,6 +212,8 @@ public class Main {
                             }
                         }
                         y = vBalls[indexBall-1].getY();
+                        if (!lockX && startCycle == 1)
+                            break;
                     }
                     cycle = 1;
                 }break;
@@ -226,41 +226,37 @@ public class Main {
     }
 
     private static Ball[] findTrack(int x1, int y1, int x2, int y2, int indexBall){
-        int countMethod = 3;
+        int countMethod = 2;
         Ball[][] vBalls = new Ball[countMethod][balls.length];
-        Hole[][] vHoles = new Hole[countMethod][holes.length];
-        vBalls[0] = goTrack(x1, y1, x2, y2, indexBall,1, false);
-        for (int i = 0; i < vHoles[0].length; i++){
-            vHoles[0][i] = holes[i].clone();
+        vBalls[0] = goTrack(x1, y1, x2, y2, indexBall,1);
+        for (int i = 0; i < holes.length; i++){
             holes[i].setState(true);
         }
-        vBalls[1] = goTrack(x1, y1, x2, y2, indexBall,2, false);
-        for (int i = 0; i < vHoles[0].length; i++){
-            vHoles[1][i] = holes[i].clone();
+        vBalls[1] = goTrack(x1, y1, x2, y2, indexBall,2);
+        for (int i = 0; i < holes.length; i++){
             holes[i].setState(true);
         }
-        vBalls[2] = goTrack(x1, y1, x2, y2, indexBall,1, true);
 
         double commonR = balls.length * cells.length;
         int index = 0;
         for (int k = 0; k < countMethod; k++){
             double r = -1;
             if (vBalls[k] != null) {
+                r = 0;
                 for (int i = 0; i < balls.length; i++) {
                     if (vBalls[k][i].isState())
                         r += Math.sqrt(Math.pow(vBalls[k][i].getX() - holes[i].getX(), 2) + Math.pow(vBalls[k][i].getY() - holes[i].getY(), 2));
                 }
-            }
-            if (r > 0 && commonR > r) {
-                commonR = r;
-                index = k;
+                if (r == 0)
+                    return vBalls[k];
+
+                if (r > 0 && commonR > r) {
+                    commonR = r;
+                    index = k;
+                }
             }
             else vBalls[k] = null;
         }
-        if (index < 2)
-            for (int i = 0; i < vHoles[0].length; i++){
-                holes[i].setState(vHoles[index][i].isState());
-            }
         if (commonR == balls.length * cells.length)
             return null;
         return vBalls[index];
@@ -269,32 +265,43 @@ public class Main {
     private static boolean moveBall(){
         int length = balls.length;
         Ball[][] vBall = new Ball[length][length];
-        for (int i = 0; i < length; i++){
-            vBall[i] = findTrack(balls[i].getX(), balls[i].getY(), holes[i].getX(), holes[i].getY(), balls[i].getIndex());
+        for (int k = 0; k < length; k++){
+            if (balls[k].isState()) {
+                int index = balls[k].getIndex();
+                vBall[k] = findTrack(balls[k].getX(), balls[k].getY(), holes[k].getX(), holes[k].getY(), index);
+            } else
+                vBall[k] = null;
         }
         double commonR = length * cells.length;
         int index = 0;
         for (int k = 0; k < length; k++){
             double r = -1;
             if (vBall[k] != null) {
+                r = 0;
                 for (int i = 0; i < length; i++) {
                     if (vBall[k][i].isState())
                         r += Math.sqrt(Math.pow(vBall[k][i].getX() - holes[i].getX(), 2) + Math.pow(vBall[k][i].getY() - holes[i].getY(), 2));
                 }
-            }
-            if (r > 0 && commonR > r) {
-                commonR = r;
-                index = k;
+
+                int countStep = vBall[k][k].getCountStep();
+                if (commonR > r + countStep) {
+                    commonR = r + countStep;
+                    index = k;
+                }
             }
         }
-        if (commonR == length * cells.length)
-            return false;
-        countStep = 2*cells.length*length;
         for (int i = 0; i < length; i++){
-            if (countStep < balls[i].getCountStep())
-                countStep = balls[i].getCountStep();
-            if (balls[i].isState())
-                balls[i] = vBall[index][i].clone();
+            if (vBall[index] != null) {
+                if (vBall[index][i] != null) {
+                    balls[i] = vBall[index][i].clone();
+                    if (!balls[i].isState()) {
+                        Main.getCell(balls[i].getX(), balls[i].getY()).getHole().setState(balls[i].isState());
+                    }
+                    if (balls[i].getIndex() == index + 1)
+                        countStep += balls[i].getCountStep();
+                }
+            }
+            balls[i].clearStep();
         }
         return true;
     }

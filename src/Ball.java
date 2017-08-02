@@ -9,6 +9,7 @@ public class Ball extends Point {
     private int preX;
     private int preY;
     private int countStep;
+    private int costStep;
 
     public Ball(int x, int y) {
         super(x, y);
@@ -80,6 +81,7 @@ public class Ball extends Point {
         }
         preX = getX();
         preY = getY();
+
         setY(y);
         countStep++;
         setCell(Main.getCell(getX(), getY()));
@@ -134,5 +136,9 @@ public class Ball extends Point {
         ball.countStep = countStep;
         ball.index = index;
         return ball;
+    }
+
+    public void clearStep(){
+        countStep = 0;
     }
 }
