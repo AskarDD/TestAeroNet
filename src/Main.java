@@ -81,7 +81,7 @@ public class Main {
             for (int i = 0; i < N; i++)
                 for (int j = 0; j < N; j++) {
                     int x = i + 1, y = j + 1;
-                    cells[i][j] = new Cell(x, y);
+                    cells[i][j] = new Cell(x, y, K);
                     if (i == 0)
                         cells[i][j].setWall(x - 1, y);
                     else if (i == N-1)
@@ -91,32 +91,33 @@ public class Main {
                     else if (j == N-1)
                         cells[i][j].setWall(x, y + 1);
                 }
-            int i = 3;
+            int k = 3;
 
-            int j = 0;
+            int n = 0;
             balls = new Ball[K];
-            while (i < 3 + 2*K){
-                balls[j] = new Ball(Integer.parseInt(mem[i].trim()), Integer.parseInt(mem[i+1].trim()));
-                j++;
-                i+=2;
+            while (k < 3 + 2*K){
+                balls[n] = new Ball(Integer.parseInt(mem[k].trim()), Integer.parseInt(mem[k+1].trim()));
+                n++;
+                k+=2;
             }
 
-            j = 0;
+            n = 0;
             holes = new Hole[K];
-            while (i < 3 + 4*K){
-                int xHole = Integer.parseInt(mem[i].trim());
-                int yHole = Integer.parseInt(mem[i+1].trim());
-                holes[j] = new Hole(xHole, yHole);
-                cells[xHole - 1][yHole - 1].addHole(holes[j]);
-                j++;
-                i+=2;
+            while (k < 3 + 4*K){
+                int xHole = Integer.parseInt(mem[k].trim());
+                int yHole = Integer.parseInt(mem[k+1].trim());
+                holes[n] = new Hole(xHole, yHole);
+                cells[xHole - 1][yHole - 1].addHole(holes[n]);
+                cells[xHole - 1][yHole - 1].setHoleDistance(holes[n].getIndex() - 1, 0);
+                n++;
+                k+=2;
             }
 
-            while (i < mem.length){
-                int x1Cell = Integer.parseInt(mem[i].trim());
-                int y1Cell = Integer.parseInt(mem[i+1].trim());
-                int x2Cell = Integer.parseInt(mem[i+2].trim());
-                int y2Cell = Integer.parseInt(mem[i+3].trim());
+            while (k < mem.length){
+                int x1Cell = Integer.parseInt(mem[k].trim());
+                int y1Cell = Integer.parseInt(mem[k+1].trim());
+                int x2Cell = Integer.parseInt(mem[k+2].trim());
+                int y2Cell = Integer.parseInt(mem[k+3].trim());
                 if (Math.sqrt(Math.pow(x1Cell - x2Cell, 2) + Math.pow(y1Cell - y2Cell, 2)) > 1){
                     valid = false;
                     System.out.println("Стены должны быть описаны смежными ячейками (ячейки с общей границей)");
@@ -124,13 +125,80 @@ public class Main {
                 }
                 cells[x1Cell - 1][y1Cell - 1].setWall(x2Cell, y2Cell);
                 cells[x2Cell - 1][y2Cell - 1].setWall(x1Cell, y1Cell);
-                i+=4;
+                k+=4;
             }
+            markCells(holes);
+            //for (Hole hole : holes){
+            //    System.out.println("indexHole = " + hole.getIndex());
+            //    for (int j = 0; j < cells.length; j++){
+            //        for (int i = 0; i < cells.length; i++){
+            //            int dist = cells[i][j].getHoleDistance(hole.getIndex() - 1);
+            //            System.out.print(dist);
+            //        }
+            //        System.out.println();
+            //    }
+            //    System.out.println();
+            //}
+
             for (Ball ball : balls){
                 ball.setCell(cells[ball.getX() - 1][ball.getY() - 1]);
             }
         }
         return valid;
+    }
+
+    public static void markCells(Hole[] holes){
+        for (Hole hole : holes){
+            for (int t = 1; t < cells.length; t++) {
+                for (int i = -t; i <= t; i++) {
+                    for (int j = -t; j <= t; j++) {
+                        if (Math.abs(i) > t - 1 || Math.abs(j) > t - 1) {
+                            int xt = hole.getX() + i;
+                            int yt = hole.getY() + j;
+                            int minDistance = markNeighbor(xt, yt, hole.getIndex(), false);
+                            if (minDistance != -2) {
+                                cells[xt - 1][yt - 1].setHoleDistance(hole.getIndex() - 1, minDistance + 1);
+                                markNeighbor(xt, yt, hole.getIndex(), true);
+                            }
+                        }
+                    }
+                }
+            }
+
+        }
+    }
+
+    public static int markNeighbor(int xt, int yt, int indexHole, boolean mark){
+        boolean culcExe = false;
+        int minDistance = 2*cells.length + 1;
+        if (xt > 0 && xt <= cells.length && yt > 0 && yt <= cells.length) {
+            for (int r = -1; r <= 1; r++) {
+                for (int q = -1; q <= 1; q++) {
+                    if ((r == 0 || q == 0) && r != q) {
+                        int xo = xt + r;
+                        int yo = yt + q;
+                        if (!cells[xt - 1][yt - 1].isWall(xo, yo)) {
+                            if (xo > 0 && xo <= cells.length && yo > 0 && yo <= cells.length) {
+                                int distance = cells[xo - 1][yo - 1].getHoleDistance(indexHole - 1);
+                                if (!mark) {
+                                    if (distance > -1 && minDistance > distance + 1) {
+                                        minDistance = distance;
+                                        culcExe = true;
+                                    }
+                                }else {
+                                    if (distance == -1) {
+                                        cells[xo - 1][yo - 1].setHoleDistance(indexHole - 1, cells[xt - 1][yt - 1].getHoleDistance(indexHole - 1)+1);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (!culcExe)
+            return -2;
+        return minDistance;
     }
 
     private static Ball[] goTrack(int x1, int y1, int x2, int y2, int indexBall, int startCycle){
